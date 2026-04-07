@@ -14,99 +14,102 @@
     body {
       font-family: -apple-system, BlinkMacSystemFont, "Helvetica Neue", sans-serif;
       background: var(--bg); color: var(--text);
-      padding: 16px 16px calc(16px + env(safe-area-inset-bottom)) 16px;
+      padding: 20px 16px calc(32px + env(safe-area-inset-bottom)) 16px;
       -webkit-font-smoothing: antialiased;
     }
+
     .header {
       display: flex; justify-content: space-between; align-items: baseline;
-      margin-bottom: 16px; padding-top: env(safe-area-inset-top);
+      margin-bottom: 20px; padding-top: env(safe-area-inset-top);
     }
-    .header h1 { font-size: 22px; font-weight: 800; letter-spacing: -0.5px; }
-    #count-display { font-size: 12px; color: var(--sub); font-weight: 600; }
+    .header h1 { font-size: 28px; font-weight: 800; letter-spacing: -0.5px; }
+    #count-display { font-size: 14px; color: var(--sub); font-weight: 600; }
 
     .search-box {
       display: flex; align-items: center; background: var(--card);
-      border: 1px solid var(--border); border-radius: 10px;
-      padding: 8px 12px; gap: 8px; margin-bottom: 12px;
+      border: 1.5px solid var(--border); border-radius: 14px;
+      padding: 14px 16px; gap: 10px; margin-bottom: 16px;
     }
+    .search-box:focus-within { border-color: var(--accent); }
     .search-box input {
-      border: none; outline: none; font-size: 14px;
+      border: none; outline: none; font-size: 17px;
       color: var(--text); background: transparent; width: 100%;
     }
-    .search-icon { color: #aaa; font-size: 14px; flex-shrink: 0; }
+    .search-box input::placeholder { color: #bbb; }
+    .search-icon { color: #bbb; font-size: 18px; flex-shrink: 0; }
 
-    .filter-section { margin-bottom: 10px; }
+    .filter-section { margin-bottom: 14px; }
     .filter-label {
-      font-size: 11px; color: #aaa; font-weight: 600;
-      margin-bottom: 6px; letter-spacing: 0.5px;
+      font-size: 13px; color: #999; font-weight: 600;
+      margin-bottom: 8px; letter-spacing: 0.3px;
     }
-    .chips { display: flex; gap: 6px; flex-wrap: wrap; }
+    .chips { display: flex; gap: 8px; flex-wrap: wrap; }
     .chip {
-      background: var(--card); border: 1px solid var(--border); border-radius: 16px;
-      padding: 5px 12px; font-size: 12px; color: var(--sub); cursor: pointer;
-      white-space: nowrap; transition: all 0.15s;
+      background: var(--card); border: 1.5px solid var(--border); border-radius: 20px;
+      padding: 9px 18px; font-size: 15px; color: var(--sub); cursor: pointer;
+      white-space: nowrap; transition: all 0.15s; font-family: inherit;
       -webkit-tap-highlight-color: transparent;
-      font-family: inherit;
     }
     .chip.active {
       background: var(--accent); border-color: var(--accent);
-      color: #fff; font-weight: 600;
+      color: #fff; font-weight: 700;
     }
-    .chip.year.active {
-      background: #5856d6; border-color: #5856d6;
-      color: #fff; font-weight: 600;
-    }
-    .period-divider { height: 1px; background: var(--border); margin: 8px 0; }
+    .chip.year.active { background: #5856d6; border-color: #5856d6; }
+    .period-divider { height: 1px; background: var(--border); margin: 10px 0; }
 
-    .divider { height: 1px; background: var(--border); margin: 12px 0; }
+    .divider { height: 1px; background: var(--border); margin: 16px 0; }
 
     .active-filters {
-      display: flex; gap: 6px; flex-wrap: wrap;
-      margin-bottom: 12px; align-items: center; min-height: 24px;
+      display: flex; gap: 8px; flex-wrap: wrap;
+      align-items: center; min-height: 28px; margin-bottom: 16px;
     }
     .active-tag {
-      background: var(--accent-bg); border-radius: 12px; padding: 3px 10px;
-      font-size: 11px; color: var(--accent-text);
-      display: flex; align-items: center; gap: 4px;
+      background: var(--accent-bg); border-radius: 14px; padding: 6px 14px;
+      font-size: 13px; color: var(--accent-text);
+      display: flex; align-items: center; gap: 6px;
     }
+    .active-tag.year-tag { background: #eeeefd; color: #5856d6; }
+    .active-tag.search-tag { background: #fffbe6; color: #996600; }
     .active-tag button {
-      background: none; border: none; color: var(--accent-text);
-      font-size: 12px; cursor: pointer; padding: 0; line-height: 1;
+      background: none; border: none; color: inherit;
+      font-size: 15px; cursor: pointer; padding: 0; line-height: 1;
     }
     .clear-all {
-      background: none; border: none; font-size: 11px; color: #ff3b30;
+      background: none; border: none; font-size: 13px; color: #ff3b30;
       margin-left: auto; cursor: pointer; padding: 0; font-family: inherit;
     }
 
-    #content { display: flex; flex-direction: column; gap: 10px; }
+    #content { display: flex; flex-direction: column; gap: 12px; }
+
     .video-card {
-      background: var(--card); border-radius: 14px; padding: 14px;
+      background: var(--card); border-radius: 16px; padding: 18px 16px;
       text-decoration: none; color: inherit;
-      display: flex; flex-direction: column; gap: 6px;
-      border: 1px solid var(--border); transition: transform 0.1s;
+      display: flex; flex-direction: column; gap: 8px;
+      border: 1.5px solid var(--border); transition: transform 0.1s;
     }
     .video-card:active { transform: scale(0.98); }
+
     .card-header { display: flex; justify-content: space-between; align-items: center; }
-    .video-date { font-size: 11px; color: var(--sub); font-weight: 600; }
+    .video-date { font-size: 13px; color: var(--sub); font-weight: 600; }
     .video-category {
-      font-size: 10px; background: var(--accent-bg); color: var(--accent-text);
-      padding: 3px 8px; border-radius: 6px; font-weight: 700;
+      font-size: 12px; background: var(--accent-bg); color: var(--accent-text);
+      padding: 4px 10px; border-radius: 8px; font-weight: 700;
     }
-    .video-title { font-size: 15px; font-weight: 700; line-height: 1.4; }
-    .video-opponent { font-size: 12px; color: var(--sub); }
+    .video-title { font-size: 18px; font-weight: 700; line-height: 1.4; }
+    .video-opponent { font-size: 14px; color: var(--sub); }
     mark { background: #fff3b0; border-radius: 2px; color: inherit; padding: 0 1px; }
 
-    .empty { text-align: center; color: var(--sub); padding: 48px 0; font-size: 14px; }
+    .empty { text-align: center; color: var(--sub); padding: 60px 0; font-size: 16px; }
 
-    #loader { display: flex; flex-direction: column; gap: 10px; }
+    #loader { display: flex; flex-direction: column; gap: 12px; }
     .skeleton {
-      background: var(--card); border-radius: 14px; height: 88px;
+      background: var(--card); border-radius: 16px; height: 100px;
       animation: pulse 1.5s infinite ease-in-out;
     }
     @keyframes pulse { 0%,100%{opacity:.6} 50%{opacity:1} }
     #error-msg {
-      color: #ff3b30; background: #ffe5e5; padding: 14px;
-      border-radius: 10px; font-size: 13px; display: none; margin-bottom: 12px;
+      color: #ff3b30; background: #ffe5e5; padding: 16px;
+      border-radius: 12px; font-size: 14px; display: none; margin-bottom: 16px;
     }
   </style>
 </head>
@@ -137,7 +140,7 @@
     <div class="chips" id="cat-chips"></div>
   </div>
 
-  <div class="filter-section" style="margin-top:10px;">
+  <div class="filter-section">
     <div class="filter-label">期間</div>
     <div class="chips" id="period-chips"></div>
     <div class="period-divider"></div>
@@ -264,7 +267,12 @@
   }
 
   function escapeRegex(str) {
-    return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    var result = '';
+    var specials = ['.','*','+','?','^','$','{','}','(',')','{','}','|','[',']','\\'];
+    for (var i = 0; i < str.length; i++) {
+      result += specials.indexOf(str[i]) >= 0 ? '\\' + str[i] : str[i];
+    }
+    return result;
   }
 
   function render() {
@@ -296,13 +304,13 @@
     af.innerHTML = '';
     const tags = [];
     if (currentCat !== 'すべて')
-      tags.push({ label: currentCat,         clear: () => { currentCat = 'すべて'; render(); } });
+      tags.push({ label: currentCat,                  cls: '',             clear: () => { currentCat = 'すべて'; render(); } });
     if (currentPeriod !== 'すべて')
-      tags.push({ label: currentPeriod,      clear: () => { currentPeriod = 'すべて'; render(); } });
+      tags.push({ label: currentPeriod,               cls: '',             clear: () => { currentPeriod = 'すべて'; render(); } });
     if (currentYear !== 'すべて')
-      tags.push({ label: currentYear + '年', clear: () => { currentYear = 'すべて'; render(); } });
+      tags.push({ label: currentYear + '年',          cls: ' year-tag',    clear: () => { currentYear = 'すべて'; render(); } });
     if (currentSearch)
-      tags.push({ label: `「${currentSearch}」`, clear: () => {
+      tags.push({ label: '「' + currentSearch + '」', cls: ' search-tag',  clear: () => {
         currentSearch = '';
         document.getElementById('search-input').value = '';
         render();
@@ -310,16 +318,16 @@
 
     tags.forEach(t => {
       const tag = document.createElement('div');
-      tag.className = 'active-tag';
-      tag.innerHTML = `${t.label} <button>×</button>`;
+      tag.className = 'active-tag' + t.cls;
+      tag.innerHTML = t.label + ' <button>×</button>';
       tag.querySelector('button').onclick = t.clear;
       af.appendChild(tag);
     });
 
     if (tags.length > 1) {
       const btn = document.createElement('button');
-      btn.className    = 'clear-all';
-      btn.textContent  = 'すべてクリア';
+      btn.className   = 'clear-all';
+      btn.textContent = 'すべてクリア';
       btn.onclick = () => {
         currentCat = 'すべて'; currentPeriod = 'すべて';
         currentYear = 'すべて'; currentSearch = '';
@@ -329,7 +337,7 @@
       af.appendChild(btn);
     }
 
-    elCount.textContent = `${filtered.length} / ${ALL_DATA.length}件`;
+    elCount.textContent = filtered.length + ' / ' + ALL_DATA.length + '件';
     elContent.innerHTML = '';
 
     if (filtered.length === 0) {
@@ -346,7 +354,7 @@
       const opponentHtml = keyword
         ? (item.opponent || '').replace(
             new RegExp(escapeRegex(currentSearch), 'gi'),
-            m => `<mark>${m}</mark>`)
+            function(m) { return '<mark>' + m + '</mark>'; })
         : (item.opponent || '');
 
       card.innerHTML =
@@ -354,8 +362,8 @@
           '<span class="video-date">'     + (item.date     || '')            + '</span>' +
           '<span class="video-category">' + (item.category || '未分類')     + '</span>' +
         '</div>' +
-        '<div class="video-title">'    + (item.title    || '(タイトルなし)') + '</div>' +
-        '<div class="video-opponent">vs ' + opponentHtml                     + '</div>';
+        '<div class="video-title">'       + (item.title    || '(タイトルなし)') + '</div>' +
+        '<div class="video-opponent">vs ' + opponentHtml                        + '</div>';
 
       elContent.appendChild(card);
     });
