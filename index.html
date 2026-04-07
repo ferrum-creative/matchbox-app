@@ -2,372 +2,833 @@
 <html lang="ja">
 <head>
   <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="description" content="Matchbox — 試合動画を素早く検索・絞り込みできるアプリ">
   <title>Matchbox</title>
   <script src="https://static.line-scdn.net/liff/edge/versions/2.22.3/sdk.js"></script>
   <style>
+    /* ── Design Tokens ─────────────────────────────── */
     :root {
-      --bg: #f7f9fa; --card: #ffffff; --text: #1a1a1a; --sub: #6e6e73;
-      --accent: #007aff; --accent-bg: #e5f0ff; --accent-text: #005bb5;
-      --border: #e5e5ea;
+      --bg: #0d0d14;
+      --surface: #16161e;
+      --surface-2: #1c1c27;
+      --glass: rgba(22,22,30,0.88);
+      --border: rgba(255,255,255,0.07);
+      --border-hi: rgba(255,255,255,0.16);
+      --text: #f0f0f8;
+      --sub: rgba(240,240,248,0.52);
+      --muted: rgba(240,240,248,0.28);
+      --accent: #4f8aff;
+      --accent-dim: rgba(79,138,255,0.14);
+      --year: #9b74ff;
+      --year-dim: rgba(155,116,255,0.14);
+      --success: #30d158;
+      --warn: #ffd60a;
+      --danger: #ff453a;
+      --r-sm: 10px; --r-md: 16px; --r-lg: 24px; --r-xl: 30px;
+      --fab: 56px;
+      --ease-spring: cubic-bezier(0.34,1.56,0.64,1);
+      --ease-out: cubic-bezier(0.22,1,0.36,1);
     }
-    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    /* ── Reset ─────────────────────────────────────── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { height: 100%; }
     body {
-      font-family: -apple-system, BlinkMacSystemFont, "Helvetica Neue", sans-serif;
-      background: var(--bg); color: var(--text);
-      padding: 20px 16px calc(32px + env(safe-area-inset-bottom)) 16px;
+      font-family: -apple-system, BlinkMacSystemFont, "Hiragino Sans", "Yu Gothic", sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100%;
       -webkit-font-smoothing: antialiased;
+      overflow-x: hidden;
+    }
+    body::before {
+      content: '';
+      position: fixed; inset: 0; pointer-events: none; z-index: 0;
+      background:
+        radial-gradient(ellipse 60% 40% at 15% -5%, rgba(79,138,255,0.11) 0%, transparent 65%),
+        radial-gradient(ellipse 50% 35% at 85% 105%, rgba(155,116,255,0.09) 0%, transparent 65%);
     }
 
+    /* ── Root Layout ───────────────────────────────── */
+    #root {
+      position: relative; z-index: 1;
+      display: flex; flex-direction: column; min-height: 100vh;
+      padding-top: env(safe-area-inset-top);
+    }
+
+    /* ── Header ────────────────────────────────────── */
     .header {
-      display: flex; justify-content: space-between; align-items: baseline;
-      margin-bottom: 20px; padding-top: env(safe-area-inset-top);
+      position: sticky; top: 0; z-index: 100;
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 0 18px;
+      height: 56px;
+      background: var(--glass);
+      backdrop-filter: blur(20px) saturate(1.6);
+      -webkit-backdrop-filter: blur(20px) saturate(1.6);
+      border-bottom: 1px solid var(--border);
     }
-    .header h1 { font-size: 28px; font-weight: 800; letter-spacing: -0.5px; }
-    #count-display { font-size: 14px; color: var(--sub); font-weight: 600; }
+    .h-left { display: flex; align-items: baseline; gap: 10px; }
+    .h-title {
+      font-size: 21px; font-weight: 800; letter-spacing: -0.5px;
+      background: linear-gradient(130deg,#fff 0%,rgba(255,255,255,.65) 100%);
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+    }
+    #count-badge { font-size: 11px; font-weight: 700; color: var(--muted); }
 
-    .search-box {
-      display: flex; align-items: center; background: var(--card);
-      border: 1.5px solid var(--border); border-radius: 14px;
-      padding: 14px 16px; gap: 10px; margin-bottom: 16px;
+    /* view toggle */
+    .vtog {
+      display: flex; gap: 2px;
+      background: var(--surface-2); border: 1px solid var(--border);
+      border-radius: 10px; padding: 3px;
     }
-    .search-box:focus-within { border-color: var(--accent); }
-    .search-box input {
-      border: none; outline: none; font-size: 17px;
-      color: var(--text); background: transparent; width: 100%;
+    .vtog-btn {
+      background: none; border: none; color: var(--muted);
+      padding: 5px 10px; border-radius: 7px; cursor: pointer; font-size: 15px;
+      transition: all .2s var(--ease-out); -webkit-tap-highlight-color: transparent;
     }
-    .search-box input::placeholder { color: #bbb; }
-    .search-icon { color: #bbb; font-size: 18px; flex-shrink: 0; }
+    .vtog-btn.active { background: var(--accent); color: #fff; box-shadow: 0 2px 8px rgba(79,138,255,.4); }
+    .vtog-btn:active { transform: scale(0.93); }
 
-    .filter-section { margin-bottom: 14px; }
-    .filter-label {
-      font-size: 13px; color: #999; font-weight: 600;
-      margin-bottom: 8px; letter-spacing: 0.3px;
-    }
-    .chips { display: flex; gap: 8px; flex-wrap: wrap; }
-    .chip {
-      background: var(--card); border: 1.5px solid var(--border); border-radius: 20px;
-      padding: 9px 18px; font-size: 15px; color: var(--sub); cursor: pointer;
-      white-space: nowrap; transition: all 0.15s; font-family: inherit;
-      -webkit-tap-highlight-color: transparent;
-    }
-    .chip.active {
-      background: var(--accent); border-color: var(--accent);
-      color: #fff; font-weight: 700;
-    }
-    .chip.year.active { background: #5856d6; border-color: #5856d6; }
-    .period-divider { height: 1px; background: var(--border); margin: 10px 0; }
-
-    .divider { height: 1px; background: var(--border); margin: 16px 0; }
-
-    .active-filters {
-      display: flex; gap: 8px; flex-wrap: wrap;
-      align-items: center; min-height: 28px; margin-bottom: 16px;
-    }
-    .active-tag {
-      background: var(--accent-bg); border-radius: 14px; padding: 6px 14px;
-      font-size: 13px; color: var(--accent-text);
+    /* ── Sync Status ───────────────────────────────── */
+    #sync-bar {
       display: flex; align-items: center; gap: 6px;
+      padding: 6px 18px; font-size: 11px; color: var(--muted);
     }
-    .active-tag.year-tag { background: #eeeefd; color: #5856d6; }
-    .active-tag.search-tag { background: #fffbe6; color: #996600; }
-    .active-tag button {
-      background: none; border: none; color: inherit;
-      font-size: 15px; cursor: pointer; padding: 0; line-height: 1;
+    .sdot {
+      width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0;
+      background: var(--success); transition: background .3s;
     }
-    .clear-all {
-      background: none; border: none; font-size: 13px; color: #ff3b30;
-      margin-left: auto; cursor: pointer; padding: 0; font-family: inherit;
+    .sdot.spin { background: var(--warn); animation: blink 1s infinite; }
+    @keyframes blink { 0%,100%{opacity:1} 50%{opacity:.25} }
+
+    /* ── Active Filter Bar ─────────────────────────── */
+    #af-bar {
+      display: flex; gap: 6px; padding: 6px 16px 8px;
+      overflow-x: auto; scrollbar-width: none; -webkit-overflow-scrolling: touch;
+    }
+    #af-bar:empty { display: none; }
+    #af-bar::-webkit-scrollbar { display: none; }
+    .af-chip {
+      display: inline-flex; align-items: center; gap: 4px; white-space: nowrap;
+      background: var(--accent-dim); border: 1px solid rgba(79,138,255,.3);
+      border-radius: 20px; padding: 5px 10px 5px 12px;
+      font-size: 12px; font-weight: 700; color: var(--accent);
+      cursor: pointer; -webkit-tap-highlight-color: transparent;
+      transition: transform .1s; font-family: inherit;
+    }
+    .af-chip:active { transform: scale(0.94); }
+    .af-chip.y { background: var(--year-dim); border-color: rgba(155,116,255,.3); color: var(--year); }
+    .af-chip.s { background: rgba(255,214,10,.1); border-color: rgba(255,214,10,.3); color: #c9a800; }
+    #af-clearall {
+      display: inline-flex; align-items: center; white-space: nowrap;
+      background: rgba(255,69,58,.1); border: 1px solid rgba(255,69,58,.25);
+      border-radius: 20px; padding: 5px 12px;
+      font-size: 12px; font-weight: 700; color: var(--danger);
+      cursor: pointer; -webkit-tap-highlight-color: transparent;
+      transition: transform .1s; font-family: inherit;
+    }
+    #af-clearall:active { transform: scale(0.94); }
+
+    /* ── Content Area ──────────────────────────────── */
+    #content-area {
+      flex: 1;
+      padding: 8px 14px calc(var(--fab) + 36px + env(safe-area-inset-bottom));
     }
 
-    #content { display: flex; flex-direction: column; gap: 12px; }
-
-    .video-card {
-      background: var(--card); border-radius: 16px; padding: 18px 16px;
-      text-decoration: none; color: inherit;
-      display: flex; flex-direction: column; gap: 8px;
-      border: 1.5px solid var(--border); transition: transform 0.1s;
+    /* ── Month Separator ───────────────────────────── */
+    .m-sep {
+      display: flex; align-items: center; gap: 10px;
+      padding: 14px 0 6px;
     }
-    .video-card:active { transform: scale(0.98); }
-
-    .card-header { display: flex; justify-content: space-between; align-items: center; }
-    .video-date { font-size: 13px; color: var(--sub); font-weight: 600; }
-    .video-category {
-      font-size: 12px; background: var(--accent-bg); color: var(--accent-text);
-      padding: 4px 10px; border-radius: 8px; font-weight: 700;
+    .m-sep-t {
+      font-size: 11px; font-weight: 800; color: var(--muted);
+      letter-spacing: 1.2px; text-transform: uppercase; white-space: nowrap;
     }
-    .video-title { font-size: 18px; font-weight: 700; line-height: 1.4; }
-    .video-opponent { font-size: 14px; color: var(--sub); }
-    mark { background: #fff3b0; border-radius: 2px; color: inherit; padding: 0 1px; }
+    .m-sep-l { flex: 1; height: 1px; background: var(--border); }
+    .m-sep-tile { grid-column: 1 / -1; }
 
-    .empty { text-align: center; color: var(--sub); padding: 60px 0; font-size: 16px; }
+    /* ── List Cards ────────────────────────────────── */
+    #list-wrap { display: flex; flex-direction: column; gap: 7px; }
+    .card-shell {
+      display: block; text-decoration: none; color: inherit;
+      border-radius: var(--r-md); -webkit-tap-highlight-color: transparent;
+      transition: transform .1s;
+    }
+    .card-shell:active { transform: scale(0.97); }
+    .card {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: var(--r-md); padding: 15px;
+      display: flex; flex-direction: column; gap: 7px;
+    }
+    .card-top { display: flex; align-items: center; justify-content: space-between; }
+    .c-date { font-size: 11px; font-weight: 700; color: var(--muted); letter-spacing: .4px; }
+    .badge {
+      font-size: 10px; font-weight: 800; padding: 3px 8px;
+      border-radius: 6px; letter-spacing: .3px;
+    }
+    .b0 { background: var(--accent-dim); color: var(--accent); }
+    .b1 { background: rgba(48,209,88,.13); color: #30d158; }
+    .b2 { background: rgba(255,159,10,.13); color: #ff9f0a; }
+    .b3 { background: rgba(255,69,58,.13); color: var(--danger); }
+    .b4 { background: var(--year-dim); color: var(--year); }
+    .c-title { font-size: 17px; font-weight: 700; line-height: 1.35; }
+    .c-opp { font-size: 13px; color: var(--sub); display: flex; align-items: center; gap: 5px; }
+    .vs-tag {
+      font-size: 9px; font-weight: 900; letter-spacing: .5px;
+      background: var(--accent-dim); color: var(--accent);
+      padding: 1px 5px; border-radius: 4px;
+    }
+    mark { background: rgba(255,214,10,.28); border-radius: 2px; color: inherit; padding: 0 1px; }
 
-    #loader { display: flex; flex-direction: column; gap: 12px; }
-    .skeleton {
-      background: var(--card); border-radius: 16px; height: 100px;
-      animation: pulse 1.5s infinite ease-in-out;
+    /* ── Tile Cards ────────────────────────────────── */
+    #tile-wrap { display: grid; grid-template-columns: 1fr 1fr; gap: 7px; }
+    .tile-shell {
+      display: block; text-decoration: none; color: inherit; aspect-ratio: 1;
+      border-radius: var(--r-md); -webkit-tap-highlight-color: transparent;
+      transition: transform .1s;
     }
-    @keyframes pulse { 0%,100%{opacity:.6} 50%{opacity:1} }
-    #error-msg {
-      color: #ff3b30; background: #ffe5e5; padding: 16px;
-      border-radius: 12px; font-size: 14px; display: none; margin-bottom: 16px;
+    .tile-shell:active { transform: scale(0.97); }
+    .tile {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: var(--r-md); height: 100%;
+      display: flex; flex-direction: column; align-items: center;
+      justify-content: center; padding: 12px; gap: 7px;
+      position: relative; overflow: hidden;
     }
+    .tile::after {
+      content: ''; position: absolute; inset: 0; pointer-events: none;
+      background: radial-gradient(circle at 50% 110%, var(--accent-dim) 0%, transparent 72%);
+      opacity: 0; transition: opacity .25s;
+    }
+    .tile-shell:active .tile::after { opacity: 1; }
+    .tile-opp { font-size: 18px; font-weight: 800; text-align: center; line-height: 1.2; }
+    .tile-date { font-size: 10px; color: var(--muted); font-weight: 600; }
+
+    /* ── Empty State ───────────────────────────────── */
+    .empty {
+      display: flex; flex-direction: column; align-items: center;
+      justify-content: center; padding: 72px 20px; gap: 14px;
+    }
+    .empty-icon { font-size: 44px; opacity: .35; }
+    .empty-txt { font-size: 15px; color: var(--muted); text-align: center; line-height: 1.7; }
+
+    /* ── Skeleton Loader ───────────────────────────── */
+    #loader { padding: 12px 14px; display: flex; flex-direction: column; gap: 8px; }
+    .skel {
+      background: var(--surface); border-radius: var(--r-md);
+      height: 110px; border: 1px solid var(--border);
+      position: relative; overflow: hidden;
+    }
+    .skel::after {
+      content: ''; position: absolute; inset: 0;
+      background: linear-gradient(90deg,transparent 0%,rgba(255,255,255,.04) 50%,transparent 100%);
+      animation: shimmer 1.6s infinite;
+    }
+    @keyframes shimmer { 0%{transform:translateX(-100%)} 100%{transform:translateX(100%)} }
+
+    /* ── Error Box ─────────────────────────────────── */
+    #err-box {
+      display: none; margin: 12px 14px;
+      background: rgba(255,69,58,.1); border: 1px solid rgba(255,69,58,.28);
+      border-radius: var(--r-md); padding: 14px;
+    }
+    #err-box.on { display: block; }
+    .err-t { font-size: 13px; font-weight: 700; color: var(--danger); margin-bottom: 4px; }
+    .err-b { font-size: 12px; color: var(--sub); }
+
+    /* ── FAB ───────────────────────────────────────── */
+    #fab {
+      position: fixed;
+      bottom: calc(22px + env(safe-area-inset-bottom));
+      left: 50%; transform: translateX(-50%);
+      z-index: 200;
+      width: var(--fab); height: var(--fab); border-radius: 50%;
+      background: linear-gradient(135deg, #4f8aff 0%, #7c5cfc 100%);
+      box-shadow: 0 4px 22px rgba(79,138,255,.55);
+      border: none; cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 22px; color: #fff;
+      -webkit-tap-highlight-color: transparent;
+      transition: transform .22s var(--ease-spring), box-shadow .2s, background .25s;
+    }
+    #fab:active { transform: translateX(-50%) scale(0.91); }
+    #fab.open {
+      background: linear-gradient(135deg,#ff453a 0%,#ff9f0a 100%);
+      box-shadow: 0 4px 22px rgba(255,69,58,.45);
+    }
+    .fi { position: absolute; transition: opacity .2s, transform .28s var(--ease-spring); }
+    .fi-o { opacity: 1; transform: rotate(0) scale(1); }
+    .fi-c { opacity: 0; transform: rotate(-90deg) scale(.5); }
+    #fab.open .fi-o { opacity: 0; transform: rotate(90deg) scale(.5); }
+    #fab.open .fi-c { opacity: 1; transform: rotate(0) scale(1); }
+
+    /* ── Sheet Overlay ─────────────────────────────── */
+    #overlay {
+      position: fixed; inset: 0; z-index: 300;
+      background: rgba(0,0,0,.52); opacity: 0; pointer-events: none;
+      backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px);
+      transition: opacity .3s;
+    }
+    #overlay.on { opacity: 1; pointer-events: auto; }
+
+    /* ── Bottom Sheet ──────────────────────────────── */
+    #sheet {
+      position: fixed; bottom: 0; left: 0; right: 0; z-index: 400;
+      background: var(--surface-2);
+      border-radius: var(--r-xl) var(--r-xl) 0 0;
+      border-top: 1px solid var(--border-hi);
+      max-height: 72vh; display: flex; flex-direction: column;
+      transform: translateY(101%);
+      transition: transform .38s var(--ease-spring);
+      box-shadow: 0 -8px 40px rgba(0,0,0,.5);
+      padding-bottom: env(safe-area-inset-bottom);
+    }
+    #sheet.open { transform: translateY(0); }
+    .sh-handle-row {
+      padding: 10px 0 4px; display: flex;
+      align-items: center; justify-content: center; flex-shrink: 0;
+    }
+    .sh-handle { width: 36px; height: 4px; border-radius: 2px; background: var(--border-hi); }
+    .sh-head {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 2px 20px 10px; flex-shrink: 0;
+    }
+    .sh-ttl { font-size: 16px; font-weight: 700; }
+    .sh-reset {
+      background: none; border: none; font-size: 13px; font-weight: 700;
+      color: var(--accent); cursor: pointer; font-family: inherit;
+      padding: 5px 9px; border-radius: 8px;
+      -webkit-tap-highlight-color: transparent; transition: transform .1s, background .15s;
+    }
+    .sh-reset:active { transform: scale(0.94); background: var(--accent-dim); }
+    .sh-body {
+      overflow-y: auto; padding: 4px 20px 20px;
+      -webkit-overflow-scrolling: touch; flex: 1;
+    }
+    .sh-body::-webkit-scrollbar { display: none; }
+
+    /* ── Search Box ────────────────────────────────── */
+    .search-box {
+      display: flex; align-items: center; gap: 9px;
+      background: var(--surface); border: 1.5px solid var(--border);
+      border-radius: var(--r-sm); padding: 12px 14px; margin-bottom: 20px;
+      transition: border-color .15s, box-shadow .15s;
+    }
+    .search-box:focus-within {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px rgba(79,138,255,.12);
+    }
+    .s-ico { font-size: 15px; color: var(--muted); flex-shrink: 0; }
+    #s-input {
+      border: none; outline: none; font-size: 16px; color: var(--text);
+      background: transparent; width: 100%; font-family: inherit; caret-color: var(--accent);
+    }
+    #s-input::placeholder { color: var(--muted); }
+    #s-clr {
+      background: none; border: none; color: var(--muted);
+      font-size: 17px; cursor: pointer; padding: 0; line-height: 1;
+      opacity: 0; transition: opacity .15s; flex-shrink: 0;
+    }
+    .search-box:focus-within #s-clr { opacity: 1; }
+
+    /* ── Filter Groups & Chips ─────────────────────── */
+    .fg { margin-bottom: 18px; }
+    .fl {
+      font-size: 10px; font-weight: 800; color: var(--muted);
+      letter-spacing: 1.2px; text-transform: uppercase; margin-bottom: 9px;
+    }
+    .chips { display: flex; gap: 6px; flex-wrap: wrap; }
+    .chip {
+      background: var(--surface); border: 1.5px solid var(--border);
+      border-radius: 20px; padding: 8px 15px; font-size: 13px; font-weight: 600;
+      color: var(--sub); cursor: pointer; white-space: nowrap; font-family: inherit;
+      -webkit-tap-highlight-color: transparent;
+      transition: all .15s var(--ease-out), transform .1s;
+    }
+    .chip:active { transform: scale(0.95); }
+    .chip.on {
+      background: var(--accent-dim); border-color: rgba(79,138,255,.45);
+      color: var(--accent); font-weight: 800;
+      box-shadow: 0 0 0 1px rgba(79,138,255,.18);
+    }
+    .chip.yc.on {
+      background: var(--year-dim); border-color: rgba(155,116,255,.45);
+      color: var(--year); box-shadow: 0 0 0 1px rgba(155,116,255,.18);
+    }
+    .fg-div { height: 1px; background: var(--border); margin: 2px 0 18px; }
+
+    /* ── Fade In ───────────────────────────────────── */
+    @keyframes fi-anim { from{opacity:0;transform:translateY(6px)} to{opacity:1;transform:none} }
+    .fade-in { animation: fi-anim .28s var(--ease-out) both; }
   </style>
 </head>
 <body>
+<div id="root">
 
-<div class="header">
-  <h1>Matchbox</h1>
-  <div id="count-display">Syncing...</div>
+  <header class="header">
+    <div class="h-left">
+      <span class="h-title">Matchbox</span>
+      <span id="count-badge">…</span>
+    </div>
+    <div class="vtog">
+      <button class="vtog-btn active" id="btn-list" aria-label="リスト表示">≡</button>
+      <button class="vtog-btn"        id="btn-tile" aria-label="タイル表示">⊞</button>
+    </div>
+  </header>
+
+  <div id="sync-bar">
+    <div class="sdot spin" id="sdot"></div>
+    <span id="stxt">読み込み中…</span>
+  </div>
+
+  <div id="af-bar"></div>
+
+  <div id="loader">
+    <div class="skel"></div><div class="skel"></div>
+    <div class="skel"></div><div class="skel"></div>
+  </div>
+
+  <div id="err-box">
+    <div class="err-t">⚠ エラーが発生しました</div>
+    <div class="err-b" id="err-msg"></div>
+  </div>
+
+  <main id="content-area" style="display:none">
+    <div id="list-wrap"></div>
+    <div id="tile-wrap" style="display:none"></div>
+  </main>
+
 </div>
 
-<div id="error-msg"></div>
+<button id="fab" aria-label="絞り込みを開く">
+  <span class="fi fi-o">⚙</span>
+  <span class="fi fi-c">✕</span>
+</button>
 
-<div id="loader">
-  <div class="skeleton"></div>
-  <div class="skeleton"></div>
-  <div class="skeleton"></div>
-</div>
+<div id="overlay"></div>
 
-<div id="app" style="display:none;">
-
-  <div class="search-box">
-    <span class="search-icon">&#128269;</span>
-    <input type="text" id="search-input" placeholder="対戦相手で検索...">
+<div id="sheet" role="dialog" aria-modal="true" aria-label="絞り込みフィルター">
+  <div class="sh-handle-row"><div class="sh-handle"></div></div>
+  <div class="sh-head">
+    <span class="sh-ttl">🔍 絞り込み</span>
+    <button class="sh-reset" id="sh-reset">すべてリセット</button>
   </div>
+  <div class="sh-body">
+    <div class="search-box">
+      <span class="s-ico">🔍</span>
+      <input type="search" id="s-input" placeholder="対戦相手で検索…" autocomplete="off">
+      <button id="s-clr" aria-label="検索をクリア">✕</button>
+    </div>
 
-  <div class="filter-section">
-    <div class="filter-label">カテゴリ</div>
-    <div class="chips" id="cat-chips"></div>
+    <div class="fg">
+      <div class="fl">カテゴリ</div>
+      <div class="chips" id="cat-chips"></div>
+    </div>
+
+    <div class="fg">
+      <div class="fl">期間（相対）</div>
+      <div class="chips" id="per-chips"></div>
+    </div>
+
+    <div class="fg-div"></div>
+
+    <div class="fg">
+      <div class="fl">年（絶対）</div>
+      <div class="chips" id="yr-chips"></div>
+    </div>
   </div>
-
-  <div class="filter-section">
-    <div class="filter-label">期間</div>
-    <div class="chips" id="period-chips"></div>
-    <div class="period-divider"></div>
-    <div class="filter-label">年</div>
-    <div class="chips" id="year-chips"></div>
-  </div>
-
-  <div class="divider"></div>
-  <div class="active-filters" id="active-filters"></div>
-
-  <div id="content"></div>
 </div>
 
 <script>
-  const LIFF_ID     = "2009710355-DFflRjkN";
-  const GAS_API_URL = "https://script.google.com/macros/s/AKfycbzkbUp2R21Rv6p9Ahd_5QSfxG8g9ODhXhO4HgGcIOzgxTpufhsM_HLDBPHdMV5NamLx/exec";
+'use strict';
+/* ── Constants ─────────────────────────── */
+const LIFF_ID     = '2009710355-DFflRjkN';
+const GAS_URL     = 'https://script.google.com/macros/s/AKfycbzkbUp2R21Rv6p9Ahd_5QSfxG8g9ODhXhO4HgGcIOzgxTpufhsM_HLDBPHdMV5NamLx/exec';
+const CACHE_KEY   = 'mbx_cache_v3';
+const PERIODS     = [
+  { label: 'すべて', mo: 0 },
+  { label: '直近1ヶ月', mo: 1 },
+  { label: '3ヶ月', mo: 3 },
+  { label: '6ヶ月', mo: 6 },
+];
+const BADGE_CLS   = ['b0','b1','b2','b3','b4'];
 
-  const elLoader  = document.getElementById('loader');
-  const elApp     = document.getElementById('app');
-  const elError   = document.getElementById('error-msg');
-  const elContent = document.getElementById('content');
-  const elCount   = document.getElementById('count-display');
+/* ══ STATE LAYER — ES6 Proxy Reactive Store ═══════════════════ */
+const _subs = {};
+const subscribe = (k, fn) => { (_subs[k] = _subs[k] || []).push(fn); };
+const notify    = (k, v, p) => {
+  (_subs[k]  || []).forEach(f => f(v, p));
+  (_subs['*'] || []).forEach(f => f(k, v, p));
+};
 
-  function showError(msg) {
-    elLoader.style.display = 'none';
-    elError.style.display  = 'block';
-    elError.textContent    = msg;
+const state = new Proxy({
+  allData:  [],
+  query:    '',
+  category: 'すべて',
+  period:   'すべて',
+  year:     'すべて',
+  viewMode: 'list',
+  sheet:    false,
+  loading:  true,
+  syncing:  false,
+  error:    null,
+}, {
+  set(t, k, v) {
+    const p = t[k];
+    if (p === v) return true;
+    t[k] = v; notify(k, v, p); return true;
   }
+});
 
-  let ALL_DATA      = [];
-  let currentCat    = 'すべて';
-  let currentPeriod = 'すべて';
-  let currentYear   = 'すべて';
-  let currentSearch = '';
+/* ── Actions ────────────────────────────── */
+const A = {
+  setData(d)    { state.allData = d; },
+  setLoading(v) { state.loading = v; },
+  setSyncing(v) { state.syncing = v; },
+  setError(m)   { state.error = m; },
+  setView(m)    { state.viewMode = m; },
+  toggleSheet() { state.sheet = !state.sheet; },
+  closeSheet()  { state.sheet = false; },
+  setQuery(q)   { state.query = q; },
+  setCat(c)     { state.category = c; },
+  setPeriod(p)  { state.period = p; if (p !== 'すべて') state.year = 'すべて'; },
+  setYear(y)    { state.year = y;   if (y !== 'すべて') state.period = 'すべて'; },
+  clearAll()    {
+    state.category = 'すべて'; state.period = 'すべて';
+    state.year = 'すべて'; state.query = '';
+    document.getElementById('s-input').value = '';
+  },
+};
 
-  const PERIODS = [
-    { label: 'すべて',    months: 0 },
-    { label: '直近1ヶ月', months: 1 },
-    { label: '3ヶ月',     months: 3 },
-    { label: '6ヶ月',     months: 6 },
-  ];
+/* ══ DATA LAYER — Offline-First (Stale-While-Revalidate) ══════ */
+const Cache = {
+  read()  { try { const r = localStorage.getItem(CACHE_KEY); return r ? JSON.parse(r) : null; } catch { return null; } },
+  write(d){ try { localStorage.setItem(CACHE_KEY, JSON.stringify({ ts: Date.now(), data: d })); } catch {} },
+};
+const sortDesc = arr => [...arr].sort((a, b) => (b.date||'').localeCompare(a.date||''));
+const isDiff   = (a, b) => JSON.stringify(a) !== JSON.stringify(b);
 
-  document.addEventListener("DOMContentLoaded", () => {
-    liff.init({ liffId: LIFF_ID })
-      .then(() => {
-        if (!liff.isLoggedIn()) {
-          liff.login({ redirectUri: location.href });
-          return;
-        }
-        const idToken = liff.getIDToken();
-        if (!idToken) return showError("IDトークン取得失敗");
+async function fetchGAS(token) {
+  const r = await fetch(`${GAS_URL}?action=getVideos&idToken=${encodeURIComponent(token)}`);
+  const j = await r.json();
+  if (!j.ok) throw new Error(j.error || 'API Error');
+  return sortDesc(j.data);
+}
 
-        fetch(`${GAS_API_URL}?action=getVideos&idToken=${encodeURIComponent(idToken)}`)
-          .then(r => r.json())
-          .then(res => {
-            if (!res.ok) return showError("API Error: " + res.error);
-            ALL_DATA = res.data.sort((a, b) => b.date.localeCompare(a.date));
-            elLoader.style.display = 'none';
-            elApp.style.display    = 'block';
-            buildCatChips();
-            buildPeriodChips();
-            buildYearChips();
-            document.getElementById('search-input').addEventListener('input', e => {
-              currentSearch = e.target.value.trim();
-              render();
-            });
-            render();
-          })
-          .catch(err => showError("通信エラー: " + err.message));
-      })
-      .catch(err => showError("LIFF init失敗: " + err.message));
+/* ══ SELECTORS ════════════════════════════════════════════════ */
+function getFiltered() {
+  const { allData, query, category, period, year } = state;
+  const kw  = query.toLowerCase();
+  const thr = getPeriodThr(period);
+  return allData.filter(x => {
+    if (category !== 'すべて' && x.category !== category) return false;
+    if (thr) { const d = new Date((x.date||'').replace(/\//g,'-')); if (isNaN(d)||d<thr) return false; }
+    if (year !== 'すべて' && !(x.date||'').startsWith(year)) return false;
+    if (kw && !(x.opponent||'').toLowerCase().includes(kw)) return false;
+    return true;
   });
+}
+function getPeriodThr(label) {
+  const p = PERIODS.find(x => x.label === label);
+  if (!p || p.mo === 0) return null;
+  const n = new Date();
+  return new Date(n.getFullYear(), n.getMonth() - p.mo, n.getDate());
+}
+function getCats()  { return ['すべて', ...new Set(state.allData.map(d=>d.category).filter(Boolean))]; }
+function getYears() {
+  const yrs = [...new Set(state.allData.map(d=>(d.date||'').slice(0,4)).filter(Boolean))].sort((a,b)=>b.localeCompare(a));
+  return ['すべて', ...yrs];
+}
+function getActiveFils() {
+  const f = [];
+  if (state.category !== 'すべて') f.push({ label: state.category,        cls: '',  clear: ()=>A.setCat('すべて') });
+  if (state.period   !== 'すべて') f.push({ label: state.period,          cls: '',  clear: ()=>A.setPeriod('すべて') });
+  if (state.year     !== 'すべて') f.push({ label: state.year+'年',       cls: 'y', clear: ()=>A.setYear('すべて') });
+  if (state.query)                 f.push({ label: '「'+state.query+'」', cls: 's', clear: ()=>{ A.setQuery(''); document.getElementById('s-input').value=''; } });
+  return f;
+}
 
-  function buildCatChips() {
-    const cats = ['すべて', ...new Set(ALL_DATA.map(d => d.category).filter(Boolean))];
-    const el = document.getElementById('cat-chips');
-    cats.forEach(cat => {
-      const btn = document.createElement('button');
-      btn.className = 'chip' + (cat === 'すべて' ? ' active' : '');
-      btn.textContent = cat;
-      btn.onclick = () => { currentCat = cat; render(); };
-      el.appendChild(btn);
+/* ══ UTILITIES ════════════════════════════════════════════════ */
+function esc(s) {
+  return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+function hl(txt, kw) {
+  const e = esc(txt);
+  if (!kw) return e;
+  return e.replace(new RegExp(kw.replace(/[.*+?^${}()|[\]\\]/g,'\\$&'),'gi'), m=>`<mark>${m}</mark>`);
+}
+function fmtMonth(d) {
+  const p = (d||'').replace(/-/g,'/').split('/');
+  return p.length>=2 ? `${p[0]}年${parseInt(p[1],10)}月` : '不明';
+}
+function badgeCls(cat) {
+  const cats = getCats().filter(c=>c!=='すべて');
+  return BADGE_CLS[cats.indexOf(cat) % BADGE_CLS.length] || 'b0';
+}
+
+/* ══ SKELETON PROXY — IntersectionObserver Lazy DOM ══════════ */
+let _io = null;
+function initIO() {
+  if (_io) _io.disconnect();
+  _io = new IntersectionObserver(entries => {
+    for (const e of entries) {
+      if (e.isIntersecting) hydrateShell(e.target);
+      else                  pruneShell(e.target);
+    }
+  }, { rootMargin: '200% 0px', threshold: 0 });
+}
+function hydrateShell(el) {
+  if (!el.dataset.inner || el.dataset.h === '1') return;
+  el.innerHTML = el.dataset.inner;
+  el.dataset.h = '1';
+  el.style.height = '';
+}
+function pruneShell(el) {
+  if (el.dataset.h !== '1') return;
+  const h = el.getBoundingClientRect().height;
+  if (h > 0) el.style.height = h + 'px';
+  el.innerHTML = '';
+  el.dataset.h = '0';
+}
+function observeShell(el) { _io && _io.observe(el); }
+
+/* ══ VIEW LAYER — Pure rendering functions ═══════════════════ */
+const V = {
+  renderLoader() {
+    const ld = document.getElementById('loader');
+    const ca = document.getElementById('content-area');
+    ld.style.display = state.loading && state.allData.length===0 ? '' : 'none';
+    ca.style.display = !state.loading || state.allData.length>0 ? '' : 'none';
+  },
+  renderErr() {
+    const b = document.getElementById('err-box');
+    document.getElementById('err-msg').textContent = state.error || '';
+    b.classList.toggle('on', !!state.error);
+  },
+  renderSync() {
+    const dot = document.getElementById('sdot');
+    const txt = document.getElementById('stxt');
+    if (state.syncing) { dot.className='sdot spin'; txt.textContent='バックグラウンドで更新中…'; }
+    else { dot.className='sdot'; txt.textContent = state.error && state.allData.length===0 ? 'エラー' : 'データ表示中'; }
+  },
+  renderSheet() {
+    document.getElementById('sheet').classList.toggle('open', state.sheet);
+    document.getElementById('overlay').classList.toggle('on', state.sheet);
+    const fab = document.getElementById('fab');
+    fab.classList.toggle('open', state.sheet);
+    fab.setAttribute('aria-label', state.sheet ? '絞り込みを閉じる' : '絞り込みを開く');
+  },
+  renderViewToggle() {
+    document.getElementById('btn-list').classList.toggle('active', state.viewMode==='list');
+    document.getElementById('btn-tile').classList.toggle('active', state.viewMode==='tile');
+    document.getElementById('list-wrap').style.display = state.viewMode==='list' ? '' : 'none';
+    document.getElementById('tile-wrap').style.display = state.viewMode==='tile' ? 'grid' : 'none';
+  },
+  renderChips() {
+    // category
+    const cc = document.getElementById('cat-chips');
+    cc.innerHTML = '';
+    getCats().forEach(c => {
+      const b = document.createElement('button');
+      b.className = 'chip' + (c===state.category?' on':'');
+      b.textContent = c; b.onclick = ()=>A.setCat(c);
+      cc.appendChild(b);
     });
-  }
-
-  function buildPeriodChips() {
-    const el = document.getElementById('period-chips');
+    // period
+    const pc = document.getElementById('per-chips');
+    pc.innerHTML = '';
     PERIODS.forEach(p => {
-      const btn = document.createElement('button');
-      btn.className = 'chip' + (p.label === 'すべて' ? ' active' : '');
-      btn.textContent = p.label;
-      btn.onclick = () => {
-        currentPeriod = p.label;
-        if (p.label !== 'すべて') currentYear = 'すべて';
-        render();
-      };
-      el.appendChild(btn);
+      const b = document.createElement('button');
+      b.className = 'chip' + (p.label===state.period?' on':'');
+      b.textContent = p.label; b.onclick = ()=>A.setPeriod(p.label);
+      pc.appendChild(b);
     });
-  }
-
-  function buildYearChips() {
-    const years = ['すべて', ...new Set(
-      ALL_DATA.map(d => d.date.substring(0, 4)).filter(Boolean).sort().reverse()
-    )];
-    const el = document.getElementById('year-chips');
-    years.forEach(y => {
-      const btn = document.createElement('button');
-      btn.className = 'chip year' + (y === 'すべて' ? ' active' : '');
-      btn.textContent = y === 'すべて' ? 'すべての年' : y + '年';
-      btn.onclick = () => {
-        currentYear = y;
-        if (y !== 'すべて') currentPeriod = 'すべて';
-        render();
-      };
-      el.appendChild(btn);
+    // year
+    const yc = document.getElementById('yr-chips');
+    yc.innerHTML = '';
+    getYears().forEach(y => {
+      const b = document.createElement('button');
+      b.className = 'chip yc' + (y===state.year?' on':'');
+      b.textContent = y==='すべて' ? 'すべての年' : y+'年';
+      b.onclick = ()=>A.setYear(y);
+      yc.appendChild(b);
     });
-  }
-
-  function getDateThreshold(periodLabel) {
-    const p = PERIODS.find(p => p.label === periodLabel);
-    if (!p || p.months === 0) return null;
-    const now = new Date();
-    return new Date(now.getFullYear(), now.getMonth() - p.months, now.getDate());
-  }
-
-  function escapeRegex(str) {
-    var result = '';
-    var specials = ['.','*','+','?','^','$','{','}','(',')','{','}','|','[',']','\\'];
-    for (var i = 0; i < str.length; i++) {
-      result += specials.indexOf(str[i]) >= 0 ? '\\' + str[i] : str[i];
+  },
+  renderAfBar() {
+    const bar = document.getElementById('af-bar');
+    bar.innerHTML = '';
+    const fils = getActiveFils();
+    fils.forEach(f => {
+      const el = document.createElement('button');
+      el.className = `af-chip ${f.cls}`;
+      el.innerHTML = `${esc(f.label)} <span>✕</span>`;
+      el.onclick = f.clear;
+      bar.appendChild(el);
+    });
+    if (fils.length > 1) {
+      const cl = document.createElement('button');
+      cl.id = 'af-clearall'; cl.textContent = 'すべてクリア';
+      cl.onclick = ()=>A.clearAll();
+      bar.appendChild(cl);
     }
-    return result;
-  }
-
-  function render() {
-    document.querySelectorAll('#cat-chips .chip').forEach(c =>
-      c.classList.toggle('active', c.textContent === currentCat));
-    document.querySelectorAll('#period-chips .chip').forEach(c =>
-      c.classList.toggle('active', c.textContent === currentPeriod));
-    document.querySelectorAll('#year-chips .chip').forEach(c => {
-      const isAllBtn = c.textContent === 'すべての年';
-      const yearVal  = c.textContent.replace('年', '');
-      c.classList.toggle('active', isAllBtn ? currentYear === 'すべて' : yearVal === currentYear);
-    });
-
-    const threshold = getDateThreshold(currentPeriod);
-    const keyword   = currentSearch.toLowerCase();
-
-    const filtered = ALL_DATA.filter(item => {
-      if (currentCat !== 'すべて' && item.category !== currentCat) return false;
-      if (threshold) {
-        const d = new Date(item.date.replace(/\//g, '-'));
-        if (isNaN(d) || d < threshold) return false;
-      }
-      if (currentYear !== 'すべて' && !item.date.startsWith(currentYear)) return false;
-      if (keyword && !(item.opponent || '').toLowerCase().includes(keyword)) return false;
-      return true;
-    });
-
-    const af = document.getElementById('active-filters');
-    af.innerHTML = '';
-    const tags = [];
-    if (currentCat !== 'すべて')
-      tags.push({ label: currentCat,                  cls: '',             clear: () => { currentCat = 'すべて'; render(); } });
-    if (currentPeriod !== 'すべて')
-      tags.push({ label: currentPeriod,               cls: '',             clear: () => { currentPeriod = 'すべて'; render(); } });
-    if (currentYear !== 'すべて')
-      tags.push({ label: currentYear + '年',          cls: ' year-tag',    clear: () => { currentYear = 'すべて'; render(); } });
-    if (currentSearch)
-      tags.push({ label: '「' + currentSearch + '」', cls: ' search-tag',  clear: () => {
-        currentSearch = '';
-        document.getElementById('search-input').value = '';
-        render();
-      }});
-
-    tags.forEach(t => {
-      const tag = document.createElement('div');
-      tag.className = 'active-tag' + t.cls;
-      tag.innerHTML = t.label + ' <button>×</button>';
-      tag.querySelector('button').onclick = t.clear;
-      af.appendChild(tag);
-    });
-
-    if (tags.length > 1) {
-      const btn = document.createElement('button');
-      btn.className   = 'clear-all';
-      btn.textContent = 'すべてクリア';
-      btn.onclick = () => {
-        currentCat = 'すべて'; currentPeriod = 'すべて';
-        currentYear = 'すべて'; currentSearch = '';
-        document.getElementById('search-input').value = '';
-        render();
-      };
-      af.appendChild(btn);
-    }
-
-    elCount.textContent = filtered.length + ' / ' + ALL_DATA.length + '件';
-    elContent.innerHTML = '';
-
-    if (filtered.length === 0) {
-      elContent.innerHTML = '<div class="empty">該当する動画がありません</div>';
+  },
+  renderCount(n, total) {
+    document.getElementById('count-badge').textContent = state.loading ? '…' : `${n}/${total}件`;
+  },
+  renderContent() {
+    const filtered = getFiltered();
+    this.renderCount(filtered.length, state.allData.length);
+    this.renderAfBar();
+    if (state.viewMode === 'list') this._renderList(filtered);
+    else                           this._renderTile(filtered);
+  },
+  _mkSep(month, tileMode) {
+    const el = document.createElement('div');
+    el.className = 'm-sep' + (tileMode ? ' m-sep-tile' : '');
+    el.innerHTML = `<span class="m-sep-t">${esc(month)}</span><div class="m-sep-l"></div>`;
+    return el;
+  },
+  _renderList(items) {
+    const wrap = document.getElementById('list-wrap');
+    wrap.innerHTML = '';
+    if (!items.length) {
+      wrap.innerHTML = '<div class="empty fade-in"><div class="empty-icon">🔍</div><div class="empty-txt">該当する試合動画が見つかりません<br>絞り込み条件を変えてみてください</div></div>';
       return;
     }
+    initIO();
+    let lastM = null;
+    items.forEach(item => {
+      const m = fmtMonth(item.date);
+      if (m !== lastM) { wrap.appendChild(this._mkSep(m, false)); lastM = m; }
 
-    filtered.forEach(item => {
-      const card = document.createElement('a');
-      card.className = 'video-card';
-      card.href      = item.url || '#';
-      card.target    = '_blank';
-
-      const opponentHtml = keyword
-        ? (item.opponent || '').replace(
-            new RegExp(escapeRegex(currentSearch), 'gi'),
-            function(m) { return '<mark>' + m + '</mark>'; })
-        : (item.opponent || '');
-
-      card.innerHTML =
-        '<div class="card-header">' +
-          '<span class="video-date">'     + (item.date     || '')            + '</span>' +
-          '<span class="video-category">' + (item.category || '未分類')     + '</span>' +
-        '</div>' +
-        '<div class="video-title">'       + (item.title    || '(タイトルなし)') + '</div>' +
-        '<div class="video-opponent">vs ' + opponentHtml                        + '</div>';
-
-      elContent.appendChild(card);
+      const shell = document.createElement('a');
+      shell.className = 'card-shell';
+      shell.href = item.url || '#';
+      shell.target = '_blank'; shell.rel = 'noopener noreferrer';
+      shell.dataset.h = '0';
+      const bc = badgeCls(item.category);
+      shell.dataset.inner = `<div class="card">
+        <div class="card-top">
+          <span class="c-date">${esc(item.date)}</span>
+          <span class="badge ${bc}">${esc(item.category||'未分類')}</span>
+        </div>
+        <div class="c-title">${esc(item.title||'(タイトルなし)')}</div>
+        <div class="c-opp"><span class="vs-tag">VS</span>${hl(item.opponent||'', state.query)}</div>
+      </div>`;
+      wrap.appendChild(shell);
+      observeShell(shell);
     });
+  },
+  _renderTile(items) {
+    const wrap = document.getElementById('tile-wrap');
+    wrap.innerHTML = '';
+    if (!items.length) {
+      wrap.innerHTML = '<div class="empty fade-in" style="grid-column:1/-1"><div class="empty-icon">🔍</div><div class="empty-txt">該当する試合動画が見つかりません<br>絞り込み条件を変えてみてください</div></div>';
+      return;
+    }
+    initIO();
+    let lastM = null;
+    items.forEach(item => {
+      const m = fmtMonth(item.date);
+      if (m !== lastM) { wrap.appendChild(this._mkSep(m, true)); lastM = m; }
+
+      const shell = document.createElement('a');
+      shell.className = 'tile-shell';
+      shell.href = item.url || '#';
+      shell.target = '_blank'; shell.rel = 'noopener noreferrer';
+      shell.dataset.h = '0';
+      const bc = badgeCls(item.category);
+      shell.dataset.inner = `<div class="tile">
+        <span class="badge ${bc}">${esc(item.category||'未分類')}</span>
+        <div class="tile-opp">${hl(item.opponent||'', state.query)}</div>
+        <div class="tile-date">${esc(item.date)}</div>
+      </div>`;
+      wrap.appendChild(shell);
+      observeShell(shell);
+    });
+  },
+  full() {
+    this.renderLoader();
+    this.renderErr();
+    this.renderSync();
+    this.renderSheet();
+    this.renderViewToggle();
+    this.renderChips();
+    this.renderContent();
+  },
+};
+
+/* ══ SUBSCRIPTIONS — wire state → view ═══════════════════════ */
+subscribe('loading',  ()=> { V.renderLoader(); V.renderCount(getFiltered().length, state.allData.length); });
+subscribe('syncing',  ()=> V.renderSync());
+subscribe('error',    ()=> { V.renderErr(); V.renderSync(); });
+subscribe('sheet',    ()=> V.renderSheet());
+subscribe('viewMode', ()=> { V.renderViewToggle(); V.renderContent(); });
+['allData','query','category','period','year'].forEach(k =>
+  subscribe(k, ()=> { V.renderChips(); V.renderContent(); })
+);
+
+/* ══ EVENT BINDINGS ══════════════════════════════════════════ */
+function bind() {
+  document.getElementById('fab').onclick      = ()=> A.toggleSheet();
+  document.getElementById('overlay').onclick  = ()=> A.closeSheet();
+  document.getElementById('sh-reset').onclick = ()=> A.clearAll();
+  document.getElementById('btn-list').onclick = ()=> A.setView('list');
+  document.getElementById('btn-tile').onclick = ()=> A.setView('tile');
+  document.getElementById('s-clr').onclick    = ()=>{ document.getElementById('s-input').value=''; A.setQuery(''); };
+  let st;
+  document.getElementById('s-input').addEventListener('input', e=>{
+    clearTimeout(st); st = setTimeout(()=>A.setQuery(e.target.value.trim()), 200);
+  });
+}
+
+/* ══ BOOTSTRAP ═══════════════════════════════════════════════ */
+document.addEventListener('DOMContentLoaded', async () => {
+  bind();
+
+  // Phase 1: Cache → instant display
+  const cached = Cache.read();
+  if (cached?.data?.length) {
+    A.setData(sortDesc(cached.data));
+    A.setLoading(false);
+    V.renderChips();
   }
+
+  // Phase 2: LIFF init
+  try {
+    await liff.init({ liffId: LIFF_ID });
+    if (!liff.isLoggedIn()) {
+      liff.login({ redirectUri: location.href });
+      return;
+    }
+  } catch (err) {
+    if (!state.allData.length) { A.setLoading(false); A.setError('LIFF初期化失敗: ' + err.message); }
+    return;
+  }
+
+  const token = liff.getIDToken();
+  if (!token) {
+    if (!state.allData.length) { A.setLoading(false); A.setError('IDトークン取得失敗'); }
+    return;
+  }
+
+  // Phase 3: GAS fetch (background refresh)
+  A.setSyncing(true);
+  try {
+    const fresh = await fetchGAS(token);
+    if (isDiff(fresh, state.allData)) {
+      A.setData(fresh);
+      Cache.write(fresh);
+    }
+    A.setLoading(false);
+    A.setError(null);
+  } catch (err) {
+    if (!state.allData.length) { A.setLoading(false); A.setError('通信エラー: ' + err.message); }
+  } finally {
+    A.setSyncing(false);
+  }
+});
 </script>
 </body>
 </html>
