@@ -1887,6 +1887,9 @@
       document.getElementById('root').classList.add('reg-mode');
       document.getElementById('reg-root').classList.add('active');
 
+      // フィルターボタンを非表示
+      document.getElementById('fab').style.display = 'none';
+
       // 戻るボタン
       document.getElementById('reg-back').onclick = () => {
         // mode=register を外してリスト画面へ
