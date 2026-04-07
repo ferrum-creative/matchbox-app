@@ -1,0 +1,365 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <title>Matchbox</title>
+  <script src="https://static.line-scdn.net/liff/edge/versions/2.22.3/sdk.js"></script>
+  <style>
+    :root {
+      --bg: #f7f9fa; --card: #ffffff; --text: #1a1a1a; --sub: #6e6e73;
+      --accent: #007aff; --accent-bg: #e5f0ff; --accent-text: #005bb5;
+      --border: #e5e5ea;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Helvetica Neue", sans-serif;
+      background: var(--bg); color: var(--text);
+      padding: 16px 16px calc(16px + env(safe-area-inset-bottom)) 16px;
+      -webkit-font-smoothing: antialiased;
+    }
+    .header {
+      display: flex; justify-content: space-between; align-items: baseline;
+      margin-bottom: 16px; padding-top: env(safe-area-inset-top);
+    }
+    .header h1 { font-size: 22px; font-weight: 800; letter-spacing: -0.5px; }
+    #count-display { font-size: 12px; color: var(--sub); font-weight: 600; }
+
+    .search-box {
+      display: flex; align-items: center; background: var(--card);
+      border: 1px solid var(--border); border-radius: 10px;
+      padding: 8px 12px; gap: 8px; margin-bottom: 12px;
+    }
+    .search-box input {
+      border: none; outline: none; font-size: 14px;
+      color: var(--text); background: transparent; width: 100%;
+    }
+    .search-icon { color: #aaa; font-size: 14px; flex-shrink: 0; }
+
+    .filter-section { margin-bottom: 10px; }
+    .filter-label {
+      font-size: 11px; color: #aaa; font-weight: 600;
+      margin-bottom: 6px; letter-spacing: 0.5px;
+    }
+    .chips { display: flex; gap: 6px; flex-wrap: wrap; }
+    .chip {
+      background: var(--card); border: 1px solid var(--border); border-radius: 16px;
+      padding: 5px 12px; font-size: 12px; color: var(--sub); cursor: pointer;
+      white-space: nowrap; transition: all 0.15s;
+      -webkit-tap-highlight-color: transparent;
+      font-family: inherit;
+    }
+    .chip.active {
+      background: var(--accent); border-color: var(--accent);
+      color: #fff; font-weight: 600;
+    }
+    .chip.year.active {
+      background: #5856d6; border-color: #5856d6;
+      color: #fff; font-weight: 600;
+    }
+    .period-divider { height: 1px; background: var(--border); margin: 8px 0; }
+
+    .divider { height: 1px; background: var(--border); margin: 12px 0; }
+
+    .active-filters {
+      display: flex; gap: 6px; flex-wrap: wrap;
+      margin-bottom: 12px; align-items: center; min-height: 24px;
+    }
+    .active-tag {
+      background: var(--accent-bg); border-radius: 12px; padding: 3px 10px;
+      font-size: 11px; color: var(--accent-text);
+      display: flex; align-items: center; gap: 4px;
+    }
+    .active-tag button {
+      background: none; border: none; color: var(--accent-text);
+      font-size: 12px; cursor: pointer; padding: 0; line-height: 1;
+    }
+    .clear-all {
+      background: none; border: none; font-size: 11px; color: #ff3b30;
+      margin-left: auto; cursor: pointer; padding: 0; font-family: inherit;
+    }
+
+    #content { display: flex; flex-direction: column; gap: 10px; }
+    .video-card {
+      background: var(--card); border-radius: 14px; padding: 14px;
+      text-decoration: none; color: inherit;
+      display: flex; flex-direction: column; gap: 6px;
+      border: 1px solid var(--border); transition: transform 0.1s;
+    }
+    .video-card:active { transform: scale(0.98); }
+    .card-header { display: flex; justify-content: space-between; align-items: center; }
+    .video-date { font-size: 11px; color: var(--sub); font-weight: 600; }
+    .video-category {
+      font-size: 10px; background: var(--accent-bg); color: var(--accent-text);
+      padding: 3px 8px; border-radius: 6px; font-weight: 700;
+    }
+    .video-title { font-size: 15px; font-weight: 700; line-height: 1.4; }
+    .video-opponent { font-size: 12px; color: var(--sub); }
+    mark { background: #fff3b0; border-radius: 2px; color: inherit; padding: 0 1px; }
+
+    .empty { text-align: center; color: var(--sub); padding: 48px 0; font-size: 14px; }
+
+    #loader { display: flex; flex-direction: column; gap: 10px; }
+    .skeleton {
+      background: var(--card); border-radius: 14px; height: 88px;
+      animation: pulse 1.5s infinite ease-in-out;
+    }
+    @keyframes pulse { 0%,100%{opacity:.6} 50%{opacity:1} }
+    #error-msg {
+      color: #ff3b30; background: #ffe5e5; padding: 14px;
+      border-radius: 10px; font-size: 13px; display: none; margin-bottom: 12px;
+    }
+  </style>
+</head>
+<body>
+
+<div class="header">
+  <h1>Matchbox</h1>
+  <div id="count-display">Syncing...</div>
+</div>
+
+<div id="error-msg"></div>
+
+<div id="loader">
+  <div class="skeleton"></div>
+  <div class="skeleton"></div>
+  <div class="skeleton"></div>
+</div>
+
+<div id="app" style="display:none;">
+
+  <div class="search-box">
+    <span class="search-icon">&#128269;</span>
+    <input type="text" id="search-input" placeholder="対戦相手で検索...">
+  </div>
+
+  <div class="filter-section">
+    <div class="filter-label">カテゴリ</div>
+    <div class="chips" id="cat-chips"></div>
+  </div>
+
+  <div class="filter-section" style="margin-top:10px;">
+    <div class="filter-label">期間</div>
+    <div class="chips" id="period-chips"></div>
+    <div class="period-divider"></div>
+    <div class="filter-label">年</div>
+    <div class="chips" id="year-chips"></div>
+  </div>
+
+  <div class="divider"></div>
+  <div class="active-filters" id="active-filters"></div>
+
+  <div id="content"></div>
+</div>
+
+<script>
+  const LIFF_ID     = "2009710355";
+  const GAS_API_URL = "https://script.google.com/macros/s/AKfycbzkbUp2R21Rv6p9Ahd_5QSfxG8g9ODhXhO4HgGcIOzgxTpufhsM_HLDBPHdMV5NamLx/exec";
+
+  const elLoader  = document.getElementById('loader');
+  const elApp     = document.getElementById('app');
+  const elError   = document.getElementById('error-msg');
+  const elContent = document.getElementById('content');
+  const elCount   = document.getElementById('count-display');
+
+  function showError(msg) {
+    elLoader.style.display = 'none';
+    elError.style.display  = 'block';
+    elError.textContent    = msg;
+  }
+
+  let ALL_DATA      = [];
+  let currentCat    = 'すべて';
+  let currentPeriod = 'すべて';
+  let currentYear   = 'すべて';
+  let currentSearch = '';
+
+  const PERIODS = [
+    { label: 'すべて',    months: 0 },
+    { label: '直近1ヶ月', months: 1 },
+    { label: '3ヶ月',     months: 3 },
+    { label: '6ヶ月',     months: 6 },
+  ];
+
+  document.addEventListener("DOMContentLoaded", () => {
+    liff.init({ liffId: LIFF_ID })
+      .then(() => {
+        if (!liff.isLoggedIn()) {
+          liff.login({ redirectUri: location.href });
+          return;
+        }
+        const idToken = liff.getIDToken();
+        if (!idToken) return showError("IDトークン取得失敗");
+
+        fetch(`${GAS_API_URL}?action=getVideos&idToken=${encodeURIComponent(idToken)}`)
+          .then(r => r.json())
+          .then(res => {
+            if (!res.ok) return showError("API Error: " + res.error);
+            ALL_DATA = res.data.sort((a, b) => b.date.localeCompare(a.date));
+            elLoader.style.display = 'none';
+            elApp.style.display    = 'block';
+            buildCatChips();
+            buildPeriodChips();
+            buildYearChips();
+            document.getElementById('search-input').addEventListener('input', e => {
+              currentSearch = e.target.value.trim();
+              render();
+            });
+            render();
+          })
+          .catch(err => showError("通信エラー: " + err.message));
+      })
+      .catch(err => showError("LIFF init失敗: " + err.message));
+  });
+
+  function buildCatChips() {
+    const cats = ['すべて', ...new Set(ALL_DATA.map(d => d.category).filter(Boolean))];
+    const el = document.getElementById('cat-chips');
+    cats.forEach(cat => {
+      const btn = document.createElement('button');
+      btn.className = 'chip' + (cat === 'すべて' ? ' active' : '');
+      btn.textContent = cat;
+      btn.onclick = () => { currentCat = cat; render(); };
+      el.appendChild(btn);
+    });
+  }
+
+  function buildPeriodChips() {
+    const el = document.getElementById('period-chips');
+    PERIODS.forEach(p => {
+      const btn = document.createElement('button');
+      btn.className = 'chip' + (p.label === 'すべて' ? ' active' : '');
+      btn.textContent = p.label;
+      btn.onclick = () => {
+        currentPeriod = p.label;
+        if (p.label !== 'すべて') currentYear = 'すべて';
+        render();
+      };
+      el.appendChild(btn);
+    });
+  }
+
+  function buildYearChips() {
+    const years = ['すべて', ...new Set(
+      ALL_DATA.map(d => d.date.substring(0, 4)).filter(Boolean).sort().reverse()
+    )];
+    const el = document.getElementById('year-chips');
+    years.forEach(y => {
+      const btn = document.createElement('button');
+      btn.className = 'chip year' + (y === 'すべて' ? ' active' : '');
+      btn.textContent = y === 'すべて' ? 'すべての年' : y + '年';
+      btn.onclick = () => {
+        currentYear = y;
+        if (y !== 'すべて') currentPeriod = 'すべて';
+        render();
+      };
+      el.appendChild(btn);
+    });
+  }
+
+  function getDateThreshold(periodLabel) {
+    const p = PERIODS.find(p => p.label === periodLabel);
+    if (!p || p.months === 0) return null;
+    const now = new Date();
+    return new Date(now.getFullYear(), now.getMonth() - p.months, now.getDate());
+  }
+
+  function escapeRegex(str) {
+    return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  }
+
+  function render() {
+    document.querySelectorAll('#cat-chips .chip').forEach(c =>
+      c.classList.toggle('active', c.textContent === currentCat));
+    document.querySelectorAll('#period-chips .chip').forEach(c =>
+      c.classList.toggle('active', c.textContent === currentPeriod));
+    document.querySelectorAll('#year-chips .chip').forEach(c => {
+      const isAllBtn = c.textContent === 'すべての年';
+      const yearVal  = c.textContent.replace('年', '');
+      c.classList.toggle('active', isAllBtn ? currentYear === 'すべて' : yearVal === currentYear);
+    });
+
+    const threshold = getDateThreshold(currentPeriod);
+    const keyword   = currentSearch.toLowerCase();
+
+    const filtered = ALL_DATA.filter(item => {
+      if (currentCat !== 'すべて' && item.category !== currentCat) return false;
+      if (threshold) {
+        const d = new Date(item.date.replace(/\//g, '-'));
+        if (isNaN(d) || d < threshold) return false;
+      }
+      if (currentYear !== 'すべて' && !item.date.startsWith(currentYear)) return false;
+      if (keyword && !(item.opponent || '').toLowerCase().includes(keyword)) return false;
+      return true;
+    });
+
+    const af = document.getElementById('active-filters');
+    af.innerHTML = '';
+    const tags = [];
+    if (currentCat !== 'すべて')
+      tags.push({ label: currentCat,         clear: () => { currentCat = 'すべて'; render(); } });
+    if (currentPeriod !== 'すべて')
+      tags.push({ label: currentPeriod,      clear: () => { currentPeriod = 'すべて'; render(); } });
+    if (currentYear !== 'すべて')
+      tags.push({ label: currentYear + '年', clear: () => { currentYear = 'すべて'; render(); } });
+    if (currentSearch)
+      tags.push({ label: `「${currentSearch}」`, clear: () => {
+        currentSearch = '';
+        document.getElementById('search-input').value = '';
+        render();
+      }});
+
+    tags.forEach(t => {
+      const tag = document.createElement('div');
+      tag.className = 'active-tag';
+      tag.innerHTML = `${t.label} <button>×</button>`;
+      tag.querySelector('button').onclick = t.clear;
+      af.appendChild(tag);
+    });
+
+    if (tags.length > 1) {
+      const btn = document.createElement('button');
+      btn.className    = 'clear-all';
+      btn.textContent  = 'すべてクリア';
+      btn.onclick = () => {
+        currentCat = 'すべて'; currentPeriod = 'すべて';
+        currentYear = 'すべて'; currentSearch = '';
+        document.getElementById('search-input').value = '';
+        render();
+      };
+      af.appendChild(btn);
+    }
+
+    elCount.textContent = `${filtered.length} / ${ALL_DATA.length}件`;
+    elContent.innerHTML = '';
+
+    if (filtered.length === 0) {
+      elContent.innerHTML = '<div class="empty">該当する動画がありません</div>';
+      return;
+    }
+
+    filtered.forEach(item => {
+      const card = document.createElement('a');
+      card.className = 'video-card';
+      card.href      = item.url || '#';
+      card.target    = '_blank';
+
+      const opponentHtml = keyword
+        ? (item.opponent || '').replace(
+            new RegExp(escapeRegex(currentSearch), 'gi'),
+            m => `<mark>${m}</mark>`)
+        : (item.opponent || '');
+
+      card.innerHTML =
+        '<div class="card-header">' +
+          '<span class="video-date">'     + (item.date     || '')            + '</span>' +
+          '<span class="video-category">' + (item.category || '未分類')     + '</span>' +
+        '</div>' +
+        '<div class="video-title">'    + (item.title    || '(タイトルなし)') + '</div>' +
+        '<div class="video-opponent">vs ' + opponentHtml                     + '</div>';
+
+      elContent.appendChild(card);
+    });
+  }
+</script>
+</body>
+</html>
