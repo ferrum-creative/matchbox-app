@@ -1931,7 +1931,7 @@
       });
 
       // 送信ボタン
-      document.getElementById('submit-btn').onclick = submitForm(token);
+      document.getElementById('submit-btn').onclick = () => submitForm(token);
 
       // マスタデータ取得
       try {
