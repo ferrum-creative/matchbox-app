@@ -1354,7 +1354,6 @@
           </div>
           <div class="url-wrap">
             <input type="url" class="reg-input" id="f-url" placeholder="https://youtube.com/…">
-            <button class="paste-btn" id="paste-btn">貼付け</button>
           </div>
         </div>
 
@@ -1912,17 +1911,6 @@
       const mm = String(today.getMonth() + 1).padStart(2, '0');
       const dd = String(today.getDate()).padStart(2, '0');
       document.getElementById('f-date').value = `${yyyy}-${mm}-${dd}`;
-
-      // URLペーストボタン
-      document.getElementById('paste-btn').onclick = async () => {
-        try {
-          const txt = await navigator.clipboard.readText();
-          document.getElementById('f-url').value = txt;
-          updatePreview();
-        } catch {
-          showToast('クリップボードへのアクセスを許可してください', 'err');
-        }
-      };
 
       // 各フィールドの入力でプレビュー更新
       ['f-date', 'f-url', 'f-title'].forEach(id => {
