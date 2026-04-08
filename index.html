@@ -1852,7 +1852,15 @@
       label.textContent = '送信中…';
 
       try {
-        await liff.sendMessages([{ type: 'text', text: msg }]);
+        const res = await fetch(GAS_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'text/plain' },
+          body: JSON.stringify({
+            action: 'registerVideo',
+            idToken: token,
+            fields: fields,
+          }),
+        });
         showToast('✓ 登録メッセージを送信しました', 'ok');
         // フォームリセット
         setTimeout(() => {
