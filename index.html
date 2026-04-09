@@ -1822,19 +1822,39 @@
 
     /* ── マスタデータ取得してセレクトを構築 ── */
     async function loadMasterData(token) {
-      const r = await fetch(`${GAS_URL}?action=getMasterData&idToken=${encodeURIComponent(token)}`);
-      const j = await r.json();
-      if (!j.ok) throw new Error(j.error || 'getMasterData Error');
-      return j.data; // { categories: [], opponents: [] }
-    }
+      const CACHE_KEY = 'matchbox_master_data';
+      const cached = localStorage.getItem(CACHE_KEY);
 
-    function buildSelect(selectId, items) {
-      const sel = document.getElementById(selectId);
-      items.forEach(item => {
-        const opt = document.createElement('option');
-        opt.value = item; opt.textContent = item;
-        sel.appendChild(opt);
-      });
+      // 1. キャッシュがあれば即座にUIを構築
+      if (cached) {
+        const data = JSON.parse(cached);
+        buildSelect('f-cat-select', data.categories);
+        buildSelect('f-opp-select', data.opponents);
+        document.getElementById('reg-loader').style.display = 'none';
+        document.getElementById('reg-form').style.display = '';
+        updatePreview();
+      }
+
+      // 2. バックグラウンドで最新データを取得し、差分があれば反映
+      try {
+        const r = await fetch(`${GAS_URL}?action=getMasterData&idToken=${encodeURIComponent(token)}`);
+        const j = await r.json();
+        if (j.ok) {
+          const freshData = JSON.stringify(j.data);
+          if (cached !== freshData) {
+            localStorage.setItem(CACHE_KEY, freshData);
+            // UIの再構築（既に表示されている場合は選択状態を維持しつつ更新）
+            document.getElementById('f-cat-select').innerHTML = '<option value="">— 選択してください —</option>';
+            document.getElementById('f-opp-select').innerHTML = '<option value="">— 選択してください —</option>';
+            buildSelect('f-cat-select', j.data.categories);
+            buildSelect('f-opp-select', j.data.opponents);
+          }
+        } else {
+          showToast('⚠ 最新データの同期に失敗しました。再ログインが必要かもしれません。', 'err');
+        }
+      } catch (e) {
+        console.error('Master data sync failed:', e);
+      }
     }
 
     /* ── 送信 ── */
@@ -1923,9 +1943,7 @@
 
       // マスタデータ取得
       try {
-        const master = await loadMasterData(token);
-        buildSelect('f-cat-select', master.categories);
-        buildSelect('f-opp-select', master.opponents);
+        await loadMasterData(token);
       } catch (e) {
         // マスタ取得失敗してもフォームは使える（直接入力で対応）
         showToast('候補データの取得に失敗しました', 'err');
@@ -2004,6 +2022,15 @@
         A.setSyncing(false);
       }
     });
+    function buildSelect(id, items) {
+      const sel = document.getElementById(id);
+      items.forEach(item => {
+        const opt = document.createElement('option');
+        opt.value = item;
+        opt.textContent = item;
+        sel.appendChild(opt);
+      });
+    }
   </script>
 </body>
 
